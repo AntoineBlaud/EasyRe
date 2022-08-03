@@ -1,9 +1,9 @@
 # EasyRePlugin
-IDA Python3 Plugin that's make you re life easier. It allows to trace and saved code/memory thats you selected, then browse the trace?
+IDA Python3 Plugin that's make you re life easier. It allows to trace and saved code/memory thats you selected, then browse the trace.
 
 ## How to used
 
-ici video
+[![demo](https://img.youtube.com/vi/rFiICyep3hE/0.jpg)](https://youtu.be/rFiICyep3hE)
 
 ### Function Tracing
   
@@ -11,8 +11,8 @@ ici video
   
  To use it you must place a single breakpoints at the start of the function that's you want to analyse and hit that breakpoint with IDA. Then launch the tracing.
 
-- DISCOVERY_TRIES is a param that will control the number of time the code resume and hits again you breakpoint. Increase that number to discover more parents functions
-- MAX_PARENTS is the number of parents to discover ( considers as a tree)
+- **DISCOVERY_TRIES** is a param that will control the number of time the code resume and hits again you breakpoint. Increase that number to discover more parents functions
+- **MAX_PARENTS** is the number of parents to discover ( considers as a tree)
 
 
 ### Chirugical Tracing
