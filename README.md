@@ -5,7 +5,7 @@ IDA Python3 script that's make you runtime analyse easier. It allows to trace th
 
 Youtube video link : 
 
-[![demo](https://img.youtube.com/vi/rFiICyep3hE/1.jpg)](https://youtu.be/rFiICyep3hE)
+[![demo](https://img.youtube.com/vi/rFiICyep3hE/0.jpg)](https://youtu.be/rFiICyep3hE)
 
 ### Function Tracing
   
