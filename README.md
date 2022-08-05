@@ -1,9 +1,10 @@
 # EasyRe X86-X64 Plugin
-IDA Python3 script that's make you runtime analyse easier. It allows to trace the code that you selected, then browse the trace, see registers, values and memory associated to the instructions saved by the trace. It allow in a easy way to compare data given to specific part of the code between different calls.
+IDA Python3  plugin that's make you runtime analyse easier. It allows to trace the code that you selected, then browse the trace, see registers, values and memory associated to the instructions saved by the trace. It allow in a easy way to compare data given to specific part of the code between different calls.
+New feature : Windows API HOOk ? Try it !
 
 ## How to used
 
-Youtube video link : 
+Youtube video link (old version) : 
 
 [![demo](https://i.ibb.co/Wvwnt2N/Image1.png)](https://youtu.be/rFiICyep3hE)
 
@@ -23,7 +24,7 @@ Youtube video link :
    breakpoints set where hits the number of time you selected.
    
    
-### StepOver and StepInto
+### StepOver, StepInto, Resume
    As the name suggest go to the next instruction and save the data
    
    

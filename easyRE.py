@@ -12,6 +12,7 @@ from atexit import register
 from collections import OrderedDict
 from concurrent.futures import thread
 from dataclasses import dataclass
+from tkinter.messagebox import askokcancel
 from typing import List
 
 import easygui
@@ -32,7 +33,6 @@ from PyQt5.QtWidgets import QApplication
 from functools import wraps
 from enum import IntEnum
 import pprint
-
 """_summary_ = "EasyRE"
 _author_ = "Antoine Blaud (@d0raken)"
 """
@@ -55,8 +55,42 @@ class GarbageValues:
         'ret', 'retn', 'retf', 'iret', 'iretn', 'iretf', 'sysret', 'sysretn',
         'sysretf'
     ]
-    MAX_PARENT = 1
-    DISCOVERY_TRIES = 0
+    modules = [
+        'kernel32.dll', 'user32.dll', 'ws2_32.dll', 'advapi32.dll', 'ntdll.dll'
+    ]
+    windowsapi_functions = [
+        'GetKeyboardState', 'LoadResource', 'CreateThread', 'OpenProcessToken',
+        'GetCommandLineA', 'SendInput', 'RaiseException', 'VirtualAlloc',
+        'GetStartupInfoA', 'SetKeyboardState', 'RegQueryInfoKeyW',
+        'GetFileAttributesA', 'CreateMutexA', 'NtOpenProcess', 'PeekNamedPipe',
+        'GetVersionExA', 'PostMessageA', 'VkKeyScanW', 'GetAsyncKeyState',
+        'UnhandledExceptionFilter', 'FlushFileBuffers', 'OpenProcess',
+        'RegDeleteKeyW', 'RegQueryInfoKeyA', 'VirtualAllocEx',
+        'SetFileAttributesA', 'DeviceIoControl', 'NtMapViewOfSection',
+        'NtUnmapViewOfSection', 'RtlCreateUserProcess', 'VirtualProtect',
+        'GetForegroundWindow', 'GlobalMemoryStatus', 'GetModuleHandle',
+        'RegOpenKeyExA', 'RegCloseKey', 'ReadProcessMemory',
+        'NtCreateProcessEx', 'FreeEnvironmentStringsA', 'CreateProcess',
+        'RegQueryValueExA', 'FindResource', 'NtOpenSection', 'LoadLibraryA',
+        'CallNextHookEx', 'RegDeleteValueW', 'SetUnhandledExceptionFilter',
+        'NtCreateSection', 'DispatchMessageA', 'CreateFileA',
+        'NtAllocateVirtualMemory', 'NtWriteVirtualMemory', 'RegSetValueExA',
+        'VirtualFree', 'SetFileTime', 'UnhookWindowsHookEx', 'GetKeyState',
+        'send', 'HeapCreate', 'NtCreateProcess', 'RegSetValueExW',
+        'RegSetValueEx', 'SetStdHandle', 'RegDeleteKeyA', 'FreeLibrary',
+        'CreateService', 'PeekMessageA', 'MoveFileACreateProcess',
+        'GetTickCount', 'GetExitCodeProcess', 'RegDeleteValueA',
+        'RegCreateKeyExA', 'RegEnumKeyExA', 'CreateRemoteThread',
+        'CreateProcessInternal', 'RegOpenKeyExW', 'GetSystemDirectoryA',
+        'ReadFile', 'RegCreateKeyExW', 'RegQueryValueExW', 'FindClose',
+        'CreateProcessA', 'connect', 'GetFileType', 'FindResourceA',
+        'GetCurrentProcess', 'SetWindowsHookExA', 'GetProcAddress',
+        'InternetOpen', 'InternetConnect', 'HTTPSendRequest',
+        'HttpOpenRequest', 'InternetReadFile', 'URLDownloadToFile',
+        'ShellExecute', 'WinExec', 'send', 'bind'
+    ]
+    maxparents = 1
+    discoverytries = 0
 
 
 class GarbageHelper:
@@ -101,39 +135,31 @@ class GarbageHelper:
                 # following code test if the register exists, and then get the value
                 if (idaapi.get_reg_val(reg, rv)):
                     found, string = False, None
-                    try:
+                    with contextlib.suppress(Exception):
                         found, string = Extract(
-                            reg[:2] if reg[2] == 'D' else reg, regs_values, zfill,
-                            var, reg)
-                    except:
-                        pass
-                    try:
+                            reg[:2] if reg[2] == 'D' else reg, regs_values,
+                            zfill, var, reg)
+
+                        if not found:
+                            found, string = Extract(reg, regs_values, zfill,
+                                                    var, reg)
+
                         if not found:
                             found, string = Extract(
-                                reg, regs_values, zfill, var, reg)
-                    except:
-                        pass
-                    try:
-                        if not found:
-                            found, string = Extract(
-                                'R' + reg if idaapi.get_inf_structure().is_64bit()
+                                'R' +
+                                reg if idaapi.get_inf_structure().is_64bit()
                                 else 'E' + reg, regs_values, zfill, var, reg)
-                    except:
-                        pass
-                    try:
+
                         if not found:
                             string = reg
                         values[var.name] = string
-                    except:
-                        pass
-                # if variable is saved into the stack
                 else:
                     try:
-                        offset = int(reg[1:])
-                        reg = "[%s+0x%s]" % (
-                            "rsp", offset) if idaapi.get_inf_structure(
-                            ).is_64bit() else "[%s+0x%s]" % ("esp", offset)
-                        values[var.name] = reg
+                        offset = hex(int(reg[1:]))
+                        reg = f"[rsp+{offset}]" if idaapi.get_inf_structure(
+                        ).is_64bit() else f"[esp+{offset}]"
+                        string = f'{var.name}: {reg}'
+                        values[var.name] = string
                     except ValueError:
                         continue
         return values
@@ -149,17 +175,15 @@ class GarbageHelper:
         functionname = kwargs['functionname']
         traceevents = kwargs['traceevents']
         index = kwargs['index']
-        timestotrace = kwargs['timestotrace'] 
+        timestotrace = kwargs['timestotrace']
         for trace in traceevents:
             if trace.functionname != functionname:
                 continue
             for k, entry in trace.entries.items():
-                
+
                 if k != ea:
                     continue
                 index = 0 if timestotrace == 1 else index % timestotrace
-                print(index, addr)
-                pprint.pprint(entry[index].mem.dump.keys())
                 if addr in entry[index].mem.dump:
                     for word in entry[index].mem.dump[addr]:
                         yield GarbageHelper.FormatWord(word)
@@ -263,13 +287,13 @@ class IdaHelper:
         idaapi.continue_process()
         event = ida_dbg.wait_for_next_event(ida_dbg.WFNE_SUSP, -1)
         return IdaHelper.GetEA()
-    
+
     @staticmethod
     def StepOver():
         idaapi.step_over()
         event = ida_dbg.wait_for_next_event(ida_dbg.WFNE_SUSP, -1)
         return IdaHelper.GetEA()
-    
+
     @staticmethod
     def StepInto():
         idaapi.step_into()
@@ -305,12 +329,38 @@ class IdaHelper:
 
     @staticmethod
     def AskConfigurationValues():
-        c = idaapi.ask_long(GarbageValues.MAX_PARENT, "Number of parents to trace:")
-        GarbageValues.MAX_PARENT if c is not None else GarbageValues.MAX_PARENT
-        
-        c =  idaapi.ask_long(GarbageValues.DISCOVERY_TRIES, "Number of discovery tries:")
-        GarbageValues.DISCOVERY_TRIES = c if c is not None else GarbageValues.DISCOVERY_TRIES
+        c = idaapi.ask_long(GarbageValues.maxparents,
+                            "Number of parents to trace:")
+        GarbageValues.maxparents if c is not None else GarbageValues.maxparents
 
+        c = idaapi.ask_long(GarbageValues.discoverytries,
+                            "Number of discovery tries:")
+        GarbageValues.discoverytries = c if c is not None else GarbageValues.discoverytries
+
+    @staticmethod
+    def GetNames(base, size, desirednames):
+        currentaddress = base
+        result = {}
+        while currentaddress <= base + size:
+            for fname in desirednames:
+                if fname in idc.get_name(currentaddress):
+                    result[fname] = currentaddress
+                    idaapi.refresh_idaview_anyway()
+                    QtWidgets.QApplication.processEvents()
+            currentaddress = idc.next_head(currentaddress)
+        return result
+
+    # Enumerate modules
+    @staticmethod
+    def FindRoutines(themodule, desirednames):
+        for m in idautils.Modules():
+            if themodule.lower() in m.name.lower():
+                base = m.base
+                size = m.size
+                idc.plan_and_wait(base, base + size)
+                return IdaHelper.GetNames(base, size, desirednames)
+
+        return {}
 
 
 class Watchdog():
@@ -359,7 +409,7 @@ class TraceCollection:
         def __init__(self, regs_values):
             self.dump = {}
             self.regs_values = regs_values
-        
+
         def Dump(self):
             self.DumpRegistersPoiters()
 
@@ -375,21 +425,17 @@ class TraceCollection:
             for i in range(size):
                 try:
                     value = idaapi.get_qword(
-                        addr + i * incr) if idaapi.get_inf_structure().is_64bit(
-                        ) else idaapi.get_dword(addr + i * incr)
+                        addr + i * incr) if idaapi.get_inf_structure(
+                        ).is_64bit() else idaapi.get_dword(addr + i * incr)
                     self.dump[addr].append(value)
                     self.DumpAddr(value, depth + 1, 30)
                 except Exception as e:
                     print(e)
-                    print(addr + i * incr)
                     break
-                
-                
+
         def DumpRegistersPoiters(self):
             for regname, regvalue in self.regs_values.items():
-                self.DumpAddr(regvalue, size=50) 
-                
-                
+                self.DumpAddr(regvalue, size=50)
 
     class EaEntry:
         """_summary_
@@ -400,8 +446,6 @@ class TraceCollection:
             self.registers = registers
             self.variables = variables
             self.mem = mem
-            
-        
 
     class FunctionEntry:
         """_summary_
@@ -423,23 +467,24 @@ class TraceCollection:
             memdump.Dump()
             entry = TraceCollection.EaEntry(registers, variables, memdump)
             if addr not in self.entries:
-                self.entries[addr] = [entry]  
+                self.entries[addr] = [entry]
             else:
                 self.entries[addr].append(entry)
-                
+
         def AddEntrySaved(self, addr, registers, variablessaved, memdumpsaved):
             memdump = TraceCollection.MemoryZone(registers)
-            memdumpsaved = {int(k):v for k,v in memdumpsaved.items()}
+            memdumpsaved = {int(k): v for k, v in memdumpsaved.items()}
             memdump.dump = memdumpsaved
             variables = TraceCollection.Variables()
-            variables.extend([TraceCollection.VariableEntry.FromJSON(json) for json in variablessaved])
+            variables.extend([
+                TraceCollection.VariableEntry.FromJSON(json)
+                for json in variablessaved
+            ])
             entry = TraceCollection.EaEntry(registers, variables, memdump)
             if addr not in self.entries:
-                self.entries[addr] = [entry]  
+                self.entries[addr] = [entry]
             else:
                 self.entries[addr].append(entry)
-            
-           
 
     class VariableEntry:
         """_summary_
@@ -458,17 +503,19 @@ class TraceCollection:
 
         def DeleteReference(self, location):
             self.references.remove(location)
-            
+
         def ToJSON(self):
-            return json.dumps(self, default=lambda o: o.__dict__,  sort_keys=True, indent=4)
+            return json.dumps(self,
+                              default=lambda o: o.__dict__,
+                              sort_keys=True,
+                              indent=4)
 
         @staticmethod
         def FromJSON(jsonString):
             variableentry = TraceCollection.VariableEntry()
-            variableentry .__dict__ = json.loads(jsonString)
-            return variableentry 
-        
-        
+            variableentry.__dict__ = json.loads(jsonString)
+            return variableentry
+
     class Variables(List):
         """_summary_
         Wrapper for VariableEntry , collections of variables.
@@ -478,8 +525,7 @@ class TraceCollection:
             super().__init__()
 
         def AppendVariable(self, name, defea, vdloc):
-            self.append(
-                TraceCollection.VariableEntry(name, defea, vdloc))
+            self.append(TraceCollection.VariableEntry(name, defea, vdloc))
 
         @staticmethod
         def FetchVariablesValues(varscollection):
@@ -491,30 +537,37 @@ class TraceCollection:
             func = idaapi.get_func(ea)
             variables = None
             init = False
+            try:
 
-            if len(varscollection) == 0 or ea == func.start_ea:
-                varscollection.append(
-                    TraceCollection.Variables())
-                init = True
+                if len(varscollection) == 0 or ea == func.start_ea:
+                    varscollection.append(TraceCollection.Variables())
+                    init = True
 
-            variables = varscollection[-1]
-            if idc.print_insn_mnem(ea) in GarbageValues.ret:
-                varscollection.pop()
+                variables = varscollection[-1]
+                if idc.print_insn_mnem(ea) in GarbageValues.ret:
+                    varscollection.pop()
 
-            decompilation = idaapi.decompile(func.start_ea)
-            if init:
-                for var in decompilation.lvars:
-                    if var.name != "":
-                        variables.AppendVariable(var.name, var.defea, ida_hexrays.print_vdloc(var.location, int(var.width)))
+                decompilation = idaapi.decompile(func.start_ea)
+                if init:
+                    for var in decompilation.lvars:
+                        if var.name != "":
+                            variables.AppendVariable(
+                                var.name, var.defea,
+                                ida_hexrays.print_vdloc(
+                                    var.location, int(var.width)))
 
-            TraceCollection.Variables.Instanciate(ea, variables)
+                TraceCollection.Variables.Instanciate(ea, variables)
+
+            except Exception as e:
+                return varscollection
+
             return variables
 
         @staticmethod
         def Instanciate(ea, variables):
             for var in variables:
                 # instantiate variables when they are created in the code
-                if var.defea >= ea and ea < var.defea + 0x16 and len(
+                if var.defea >= ea and ea < var.defea + 0x32 and len(
                         var.references) == 0:
                     var.AppendReference(var.vdloc)
                 if str(idc.print_operand(ea, 0)) == str(var.vdloc):
@@ -536,7 +589,7 @@ class TraceCollection:
         traceevents = []
         last_invoke = content["last_invoke"]
         timestotrace = content["timestotrace"]
-        for entry in content["trace"] :
+        for entry in content["trace"]:
             trace_index = entry["trace_index"]
             if trace_index > last_trace_index:
                 last_trace_index = trace_index
@@ -566,8 +619,10 @@ class TraceCollection:
             for k, entry in trace.entries.items():
                 for j in range(len(entry)):
                     registersentry = entry[j].registers
-                    registers = registersentry 
-                    variables = [variable.ToJSON() for variable in entry[j].variables]
+                    registers = registersentry
+                    variables = [
+                        variable.ToJSON() for variable in entry[j].variables
+                    ]
                     content["trace"].append({
                         "ea": k,
                         "trace_index": i,
@@ -592,12 +647,13 @@ class UI(PluginForm):
         self.stack_pointer_printed = {}
 
     def OnCreate(self, form):
-        print("Create ui form")
         self.parent = self.FormToPyQtWidget(form)
         self.PopulateForm()
 
     def PopulateForm(self):
-        print("PopulateForm")
+
+        btnpostions = [(0, i * 50, 140, 40) for i in range(10)]
+
         # Create layout
         layout = QtWidgets.QHBoxLayout()
         self.callsW = QtWidgets.QListWidget()
@@ -626,38 +682,45 @@ class UI(PluginForm):
         self.widget.setFixedWidth(150)
         self.restartBtn = QtWidgets.QPushButton('Reset', self.widget)
         self.restartBtn.clicked.connect(self.valuetracer.ActionReset)
-        self.restartBtn.setGeometry(0, 50, 140, 40)
-        self.cleanBtn = QtWidgets.QPushButton('Clean bpts', self.widget)
-        self.cleanBtn.setGeometry(0, 250, 140, 40)
+        self.restartBtn.setGeometry(*btnpostions[1])
+        self.cleanBtn = QtWidgets.QPushButton('Clean Bpts', self.widget)
+        self.cleanBtn.setGeometry(*btnpostions[6])
         self.cleanBtn.clicked.connect(self.valuetracer.CleanBreakpoints)
         self.saveBtn = QtWidgets.QPushButton('Save', self.widget)
         self.saveBtn.clicked.connect(self.valuetracer.Save)
-        self.saveBtn.setGeometry(0, 300, 140, 40)
-        self.traceBtnGlobal = QtWidgets.QPushButton('Function Tracing', self.widget)
-        self.traceBtnGlobal.setGeometry(0, 0, 140, 40)
+        self.saveBtn.setGeometry(*btnpostions[8])
+        self.traceBtnGlobal = QtWidgets.QPushButton('Function Tracing',
+                                                    self.widget)
+        self.traceBtnGlobal.setGeometry(*btnpostions[0])
         self.traceBtnGlobal.clicked.connect(self.valuetracer.ActionGlobalTrace)
-        self.traceBtnChirugical = QtWidgets.QPushButton('Chirugical Tracing',
-                                                   self.widget)
-        self.traceBtnChirugical.setGeometry(0, 100, 140, 40)
+        self.traceBtnChirugical = QtWidgets.QPushButton(
+            'Chirugical Tracing', self.widget)
+        self.traceBtnChirugical.setGeometry(*btnpostions[5])
         self.traceBtnChirugical.clicked.connect(
             self.valuetracer.ActionChirugicalTrace)
         self.loadBtn = QtWidgets.QPushButton('Load', self.widget)
-        self.loadBtn.setGeometry(0, 350, 140, 40)
+        self.loadBtn.setGeometry(*btnpostions[7])
         self.loadBtn.clicked.connect(self.valuetracer.Load)
         self.stepOverBtn = QtWidgets.QPushButton('Step Over', self.widget)
-        self.stepOverBtn.setGeometry(0, 150, 140, 40)
+        self.stepOverBtn.setGeometry(*btnpostions[2])
         self.stepOverBtn.clicked.connect(self.valuetracer.ActionStepOver)
         self.stepIntoBtn = QtWidgets.QPushButton('Step Into', self.widget)
-        self.stepIntoBtn.setGeometry(0, 200, 140, 40)
+        self.stepIntoBtn.setGeometry(*btnpostions[3])
         self.stepIntoBtn.clicked.connect(self.valuetracer.ActionStepInto)
+        self.stepIntoBtn = QtWidgets.QPushButton('Resume', self.widget)
+        self.stepIntoBtn.setGeometry(*btnpostions[4])
+        self.stepIntoBtn.clicked.connect(self.valuetracer.ActionResume)
+        self.stepIntoBtn = QtWidgets.QPushButton('Hook WinAPI', self.widget)
+        self.stepIntoBtn.setGeometry(*btnpostions[9])
+        self.stepIntoBtn.clicked.connect(self.valuetracer.ActionHookWin)
         self.dump.addWidget(self.dataW)
         self.dump.addWidget(self.stackL)
         layout.addWidget(self.callsW)
         layout.addWidget(self.codeW)
         layout.addLayout(self.dump)
         layout.addWidget(self.widget)
-        
-         # make our created layout the dialogs layout
+
+        # make our created layout the dialogs layout
         self.parent.setLayout(layout)
 
     def AddCall(self, item):
@@ -668,22 +731,19 @@ class UI(PluginForm):
 
     def AddData(self, item):
         self.dataW.addItem(item)
-        
+
     def AddDump(self, item):
         self.stackL.addItem(item)
 
     def Reset(self):
-        self.dataW.clear()
-        self.callsW.clear()
-        self.codeW.clear()
-        self.stackL.clear()
-        self.stack_pointer_printed = {}
         with contextlib.suppress(Exception):
+            self.dataW.clear()
+            self.callsW.clear()
+            self.codeW.clear()
+            self.stackL.clear()
+            self.stack_pointer_printed = {}
             self.callsW.setCurrentRow(0)
             self.codeW.setCurrentRow(0)
-            
-        
-            
 
     def ShowMemoryDump(self, traceevents):
         """_summary_
@@ -698,14 +758,26 @@ class UI(PluginForm):
             functionname = self.dataW.item(0).text()
             addr = self.dataW.item(0).text()
             ea = int(self.codeW.item(0).text().split(" ")[0], 16)
-        zfill = 16 if idaapi.get_inf_structure().is_64bit() else 8
-        addr = int(addr.split(" ")[-1], 16)
+        try:
+            addr = int(addr.split(" ")[-1], 16)
+        except ValueError:
+            return
+
         idaapi.jumpto(ea)
         indexcode = self.codeW.currentRow()
         # addr, ea, functionname, self.valuetracer.traceevents, index, self.valuetracer.timestotrace
-        params = {"addr": addr, "ea": ea, "functionname": functionname, "traceevents": self.valuetracer.traceevents, "index": indexcode, "timestotrace": self.valuetracer.timestotrace}
-        for dump in GarbageHelper.FormatDataDump(**params):
-            self.AddDump(dump)
+        params = {
+            "addr": addr,
+            "ea": ea,
+            "functionname": functionname,
+            "traceevents": self.valuetracer.traceevents,
+            "index": indexcode,
+            "timestotrace": self.valuetracer.timestotrace
+        }
+        mult = 8 if idaapi.get_inf_structure().is_64bit() else 4
+        for offset, dump in enumerate(GarbageHelper.FormatDataDump(**params)):
+            offset = offset * mult
+            self.AddDump("0x%03x    %s" % (offset, dump))
 
     def ShowCode(self):
         """_summary_
@@ -713,7 +785,6 @@ class UI(PluginForm):
         """
         self.codeW.clear()
         code = []
-        print(self.valuetracer.last_invoke)
         if self.valuetracer.last_invoke == Invoke.CHIRUGICAL_TRACER:
             for trace in self.valuetracer.traceevents:
                 for ea, entry in trace.entries.items():
@@ -723,7 +794,6 @@ class UI(PluginForm):
             ea = idc.get_name_ea_simple(funcName)
             code = IdaHelper.GrabFunctionCode(ea)
         self._ShowCode(code)
-            
 
     def _ShowCode(self, code):
         for code_entry in code:
@@ -764,17 +834,19 @@ class UI(PluginForm):
             for k, entry in trace.entries.items():
                 if k != ea:
                     continue
-                
+
                 # special case for chirugical tracing
-                index = 0 if self.valuetracer.last_invoke != Invoke.CHIRUGICAL_TRACER else self.codeW.currentRow()%self.valuetracer.timestotrace
+                index = 0 if self.valuetracer.last_invoke != Invoke.CHIRUGICAL_TRACER else self.codeW.currentRow(
+                ) % self.valuetracer.timestotrace
                 if index > len(entry) - 1:
                     raise Exception("Index out of range")
-                    
+
                 for regname, regvalue in GarbageHelper.ConvertRegistersValues(
                         entry[index].registers).items():
                     self.AddData(f"{regname}: {regvalue}")
-                for _ , vstring in GarbageHelper.ConvertVariablesValues(
-                        entry[index].variables, entry[index].registers).items():
+                for _, vstring in GarbageHelper.ConvertVariablesValues(
+                        entry[index].variables,
+                        entry[index].registers).items():
                     self.AddData(f"{vstring}")
                 break
 
@@ -786,16 +858,27 @@ class UI(PluginForm):
         stack = self.stackL.currentItem().text()
         item = self.stackL.findItems(stack, QtCore.Qt.MatchExactly)[0]
         index = self.stackL.indexFromItem(item).row()
-        addr = int(stack.split(" ")[0], 16)
+        addr = int(stack.split(" ")[4], 16)
         # if index in self.stack_pointer_printed:
         #     return
         self.stack_pointer_printed[index] = True
         ea = int(self.codeW.currentItem().text().split(" ")[0], 16)
         functionname = self.callsW.currentItem().text()
         indexcode = self.codeW.currentRow()
-        params = {"addr": addr, "ea": ea, "functionname": functionname, "traceevents": self.valuetracer.traceevents, "index": indexcode, "timestotrace": self.valuetracer.timestotrace}
-        for dump in GarbageHelper.FormatDataDump(**params):
-            self.stackL.insertItem(index + 1, " " * 8 + dump)
+        params = {
+            "addr": addr,
+            "ea": ea,
+            "functionname": functionname,
+            "traceevents": self.valuetracer.traceevents,
+            "index": indexcode,
+            "timestotrace": self.valuetracer.timestotrace
+        }
+        mult = 8 if idaapi.get_inf_structure().is_64bit() else 4
+        for offset, dump in enumerate(GarbageHelper.FormatDataDump(**params)):
+            offset = offset * mult
+            self.stackL.insertItem(index + 1,
+                                   " " * 8 + "0x%03x    %s" % (offset, dump))
+            index += 1
 
     def OnClose(self, form):
         """
@@ -806,19 +889,16 @@ class UI(PluginForm):
             idaapi.clear_trace()
 
 
+class EasyRe(idaapi.plugin_t):
 
-
-class SuperTracer():
-
-    flags = 0
+    flags = idaapi.PLUGIN_UNL
     comment = "Plugin for improve the reverse engineering speed of IDA when you want tog focus on a Chirugical part of the code"
     help = "See https://github.com/"
-    wanted_name = "SuperTracer"
-    
-
+    wanted_name = "EasyRe"
+    wanted_hotkey = "Ctrl+Shift+S"
 
     def __init__(self):
-        super().__init__()
+        super(EasyRe, self).__init__()
         self.discoveredfuncs = []
         self.bpts = []
         self.varscollection = []
@@ -828,26 +908,52 @@ class SuperTracer():
         self.last_invoke = None
         self.watchDog = Watchdog()
         self.timestotrace = 1
+        self.AttachUi()
+       
 
     def Save(self):
         """_summary_
         Save the current state of the plugin
         """
-        TraceCollection.SaveTrace(self.traceevents, self.last_invoke, self.timestotrace)
-        
-        
-    def AttachUi(self, UI):
+        TraceCollection.SaveTrace(self.traceevents, self.last_invoke,
+                                  self.timestotrace)
+
+    def AttachUi(self):
         """_summary_
         Attach the UI to the plugin
         """
-        self.UI = UI
+        self.UI = UI()
+        self.UI.AttachTracer(self)
+        # # try instantiate the UI
+        # for i in range(10):
+        #     try:
+        #         self.UI.Show(f"EasyRe - {hex(i)}")
+        #         break
+        #     except Exception as e:
+        #         logging.error(e)
+                
+    def run(self, arg):
+        """_summary_
+        Run the plugin
+        """
+        for i in range(10):
+            with contextlib.suppress(Exception):
+                self.UI.Show(f"EasyRe {hex(i)}")
+                break
+        
+    def init(self):
+        return idaapi.PLUGIN_OK
+    
+    def term(self):
+        pass
 
     def Load(self):
         """_summary_
         Load the saved state of the plugin
         """
         self.Reset()
-        self.traceevents, self.last_invoke, self.timestotrace = TraceCollection.LoadTrace()
+        self.traceevents, self.last_invoke, self.timestotrace = TraceCollection.LoadTrace(
+        )
         for trace in self.traceevents:
             self.UI.AddCall(trace.functionname)
 
@@ -859,15 +965,17 @@ class SuperTracer():
         self.varscollection = []
         self.prevfuncea = 0
         self.traceevents = []
-        
+
     def PrepareTrace(func):
+
         def wrap(self, *args, **kw):
             self.timestotrace = 1
             if self.last_invoke == Invoke.CHIRUGICAL_TRACER:
                 self.Reset()
             return func(self)
+
         return wrap
-    
+
     def ActionReset(self):
         self.Reset()
 
@@ -876,11 +984,9 @@ class SuperTracer():
         Trrigger the global trace action
         """
         self.Reset()
-        IdaHelper.Resume()
         self.last_invoke = Invoke.GLOBAL_TRACER
         self.SetupGlobalTrace()
         self.GlobalTrace()
-        print("End Global Trace")
         self.CleanBreakpoints()
 
     def ActionChirugicalTrace(self):
@@ -893,7 +999,7 @@ class SuperTracer():
         self.last_invoke = Invoke.CHIRUGICAL_TRACER
         self.timestotrace = idaapi.ask_long(10, "Number of times to trace:")
         self.ChirugicalTrace()
-        
+
     @PrepareTrace
     def ActionStepOver(self):
         """_summary_
@@ -902,8 +1008,7 @@ class SuperTracer():
         self.last_invoke = Invoke.GLOBAL_TRACER
         self.StepOverTrace()
         self.UI.ShowCode()
-        
-        
+
     @PrepareTrace
     def ActionStepInto(self):
         """_summary_
@@ -912,7 +1017,28 @@ class SuperTracer():
         self.last_invoke = Invoke.GLOBAL_TRACER
         self.StepIntoTrace()
         self.UI.ShowCode()
-        
+
+    @PrepareTrace
+    def ActionResume(self):
+        self.last_invoke = Invoke.GLOBAL_TRACER
+        self.ResumeTrace()
+        self.UI.ShowCode()
+
+    def ActionHookWin(self):
+        print("Hooking Windows Api")
+        askokcancel = idaapi.ask_yn( 1,
+            "Are you sure you want to hook Windows Api? It will take less that a minute")
+        if not askokcancel:
+            return
+        for module in GarbageValues.modules:
+            print(module)
+            locations = IdaHelper.FindRoutines(
+                module, GarbageValues.windowsapi_functions)
+            for fname, addr in locations.items():
+                idaapi.add_bpt(addr, idaapi.BPT_SOFT)
+                addr = hex(addr)
+                print(f'hooking {fname}: {addr}')
+
     def CleanBreakpoints(self):
         """_summary_
         Remove all breakpoints
@@ -944,16 +1070,16 @@ class SuperTracer():
     def DiscoverParents(self):
         """_summary_
         Set breakpoints on the return addresses of the functions to discover their parents
-        Repeat this process by using the DISCOVER_PARENTS flag and the DISCOVERY_TRIES flag
+        Repeat this process by using the DISCOVER_PARENTS flag and the discoverytries flag
         """
-        for _ in range(GarbageValues.DISCOVERY_TRIES):
+        for _ in range(GarbageValues.discoverytries):
             # disable all breakpoints added by this plugin
             for self.ea in self.bpts:
                 idaapi.disable_bpt(self.ea)
             # run until we hit the user defined function
             idaapi.continue_process()
             # continue until we got a breakpoint (retn)
-            for _ in range(GarbageValues.MAX_PARENT):
+            for _ in range(GarbageValues.maxparents):
                 self.SetBreakpointsOnReturns(self.ea)
                 idaapi.continue_process()
                 event = ida_dbg.wait_for_next_event(ida_dbg.WFNE_SUSP, -1)
@@ -971,14 +1097,13 @@ class SuperTracer():
         """
         ea = idc.get_name_ea_simple(self.main_function)
         for line in idautils.FuncItems(ea):
-            print(idc.print_insn_mnem(line), idc.print_operand(line, 0) )
             if idc.print_insn_mnem(line) == "call":
                 functionname = idc.print_operand(line, 0)
+                ea = idc.get_name_ea_simple(functionname)
+                ref_fn = idaapi.get_func(ea)
+                if not ref_fn:
+                    continue
                 self.discoveredfuncs.append(functionname)
-                
-                
-                
-        print("end of children discovery")
 
     def SetBreakpointsIntoDiscoveredFunctions(self):
         """_summary_
@@ -1027,22 +1152,24 @@ class SuperTracer():
         ea, functionname = IdaHelper.Resume()
         ida_dbg.disable_bpt(ea)
         self._Trace(ea, functionname)
-        
+
     def StepOverTrace(self):
         ea, functionname = IdaHelper.StepOver()
         self._Trace(ea, functionname)
-        
+
     def StepIntoTrace(self):
         ea, functionname = IdaHelper.StepInto()
         self._Trace(ea, functionname)
-        
-        
+
+    def ResumeTrace(self):
+        ea, functionname = IdaHelper.Resume()
+        self._Trace(ea, functionname)
+
     def _Trace(self, ea, functionname):
         idaapi.refresh_idaview_anyway()
         QtWidgets.QApplication.processEvents()
         idaapi.jumpto(ea)
-        trace = IdaHelper.FindFunctionInTrace(functionname,
-                                                   self.traceevents)
+        trace = IdaHelper.FindFunctionInTrace(functionname, self.traceevents)
         trace = self.InstantiateTrace(ea,
                                       functionname) if trace is None else trace
         trace.AddEntry(
@@ -1054,7 +1181,7 @@ class SuperTracer():
         """_summary_
         This function is responsible for the global trace action. 
         """
-       
+
         self.watchDog.Start()
         # trace parents and main function ->  get down
         while True:
@@ -1070,14 +1197,13 @@ class SuperTracer():
                 self.watchDog.CheckExpired()
                 if idc.print_insn_mnem(ea) in GarbageValues.ret:
                     ida_dbg.step_over()
-                    event = ida_dbg.wait_for_next_event(
-                        ida_dbg.WFNE_SUSP, -1)
+                    event = ida_dbg.wait_for_next_event(ida_dbg.WFNE_SUSP, -1)
                     break
                 ea, functionname = IdaHelper.GetEA()
                 self.Trace()
             self.UI.AddCall(functionname)
         ida_dbg.request_enable_insn_trace(False)
-        
+
     def ChirugicalTrace(self):
         """_summary_
         This function is responsible for the Chirugical trace action.
@@ -1097,28 +1223,17 @@ class SuperTracer():
         with contextlib.suppress(Exception):
             self.last_invoke()
 
-    def _Start(self):
-        if self.UI is None:
-            raise Exception("UI is not initialized")
-        print("Starting trace")
-        self.segments = IdaHelper.DiscoverSegments()
-        self.Reset()
-        
-        
+
+
+
 class Invoke(IntEnum):
     GLOBAL_TRACER = 1
     CHIRUGICAL_TRACER = 2
-        
-ui, tracer = UI(), SuperTracer()
 
-ui.AttachTracer(tracer)
-tracer.AttachUi(ui)
 
-for i in range(10):
-    try:
-        ui.Show(f"EasyRe - {hex(i)}")
-        ui.AddCode("Message de base")  # disable all breakpoints
-        break
-    except Exception as e:
-        logging.error(e)
-ui.valuetracer._Start()
+
+def PLUGIN_ENTRY():
+
+    return EasyRe()
+
+
