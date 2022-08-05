@@ -56,7 +56,7 @@ class GarbageValues:
         'sysretf'
     ]
     MAX_PARENT = 1
-    DISCOVERY_TRIES = 1
+    DISCOVERY_TRIES = 0
 
 
 class GarbageHelper:
@@ -1057,8 +1057,10 @@ class SuperTracer():
        
         self.watchDog.Start()
         # trace parents and main function ->  get down
-        while IdaHelper.GetEA()[1] != self.main_function:
+        while True:
             self.Trace()
+            if IdaHelper.GetEA()[1] != self.main_function:
+                break
         #  -> get up
         for _ in range(len(self.traceevents)):
             ea, functionname = IdaHelper.GetEA()
