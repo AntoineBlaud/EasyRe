@@ -1,6 +1,7 @@
 # EasyRe X86-X64 Plugin
 IDA Python3  plugin that's make you runtime analyse easier. It allows to trace the code that you selected, then browse the trace, see registers, values and memory associated to the instructions saved by the trace. It allow in a easy way to compare data given to specific part of the code between different calls.
-New feature : Windows API HOOk ? Try it !
+
+**New feature : Windows API hooking ? Try it !**
 
 ## How to used
 
