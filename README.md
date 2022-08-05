@@ -1,9 +1,12 @@
-# EasyRe
-IDA Python3 script that's make you re life easier. It allows to trace and saved code/memory thats you selected, then browse the trace.
+# EasyRe X86-X64 Plugin
+IDA Python3 script that's make you runtime analyse easier. It allows to trace the code that you selected, then browse the trace, see registers, values and memory associated to the instructions saved by the trace. It allow in a easy way to compare data given to specific part of the code between different calls.
 
 ## How to used
 
-[![demo](https://img.youtube.com/vi/rFiICyep3hE/0.jpg)](https://youtu.be/rFiICyep3hE)
+Youtube video link : 
+
+[![demo](https://i.ibb.co/Wvwnt2N/Image1.png)](https://youtu.be/rFiICyep3hE)
+
 
 ### Function Tracing
   
@@ -16,7 +19,7 @@ IDA Python3 script that's make you re life easier. It allows to trace and saved 
 
 
 ### Chirugical Tracing
-   But breakpoits on the address you want to monitor, select the number of time you want to trace the code and launch the trace. It will run the program until all 
+   Put breakpoits on the address you want to monitor, select the number of time you want to trace the code and launch the trace. It will run the program until all 
    breakpoints set where hits the number of time you selected.
    
    
