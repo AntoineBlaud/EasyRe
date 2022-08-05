@@ -19,7 +19,7 @@ Youtube video link :
 
 
 ### Chirugical Tracing
-   But breakpoits on the address you want to monitor, select the number of time you want to trace the code and launch the trace. It will run the program until all 
+   Put breakpoits on the address you want to monitor, select the number of time you want to trace the code and launch the trace. It will run the program until all 
    breakpoints set where hits the number of time you selected.
    
    
