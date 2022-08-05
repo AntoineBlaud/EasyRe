@@ -609,7 +609,7 @@ class UI(PluginForm):
         self.codeW.setSelectionMode(
             QtWidgets.QAbstractItemView.ExtendedSelection)
         self.codeW.currentItemChanged.connect(self.ShowTrace)
-        self.codeW.setFixedWidth(300)
+        self.codeW.setFixedWidth(400)
         self.dump = QtWidgets.QHBoxLayout()
         self.dataW = QtWidgets.QListWidget()
         self.dataW.setSelectionMode(
@@ -899,8 +899,8 @@ class SuperTracer():
         """_summary_
         Trigger the step over action
         """
-        self.StepOverTrace()
         self.last_invoke = Invoke.GLOBAL_TRACER
+        self.StepOverTrace()
         self.UI.ShowCode()
         
         
