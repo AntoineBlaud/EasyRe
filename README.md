@@ -38,7 +38,7 @@ You tube video link (old version) :
 
 
 ### Load And Save
-  The plug in has the capacity to save the trace in order to load it the next time you need it. 
+  The plug-in has the capacity to save the trace in order to load it the next time you need it. 
 
 ### Windows  API hook
 
