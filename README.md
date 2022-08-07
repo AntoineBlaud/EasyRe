@@ -24,12 +24,6 @@ You tube video link (old version) :
 
  In order to use it you must place **a single breakpoints** at the start of the function that's you want to analyses and hit that breakpoint with IDA, then launch the tracing.
 
- When you will click on the button to trigger this item, a prompt will ask for two variables:
-
-  - >  Variable **Discovery tries** is a direct control to discover the functions that call the one you're currently in. The technique to discover the parents is to execute the function and then, when we hit a  *ret* instruction, we will register the function that called it; and we can repeat this step several times to discover parent of the parent, etc ...
-  
-  - > Variable **Max parents** is the variable that will control the number of parents of the function. The more we increase, the more we will go up in the call stack, and then trace the calls and the set of operations performed in the parent functions up to the one we focused on.
-
 
 ### Surgical Tracing
    In case you only want to monitor specific places in the code, this option is the right choice. It allows you to put breakpoints at different places in the code, and then choose the number of times you want to pass over them. This allows us to compare the values of the registers and the stack between several passes.
