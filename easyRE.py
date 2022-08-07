@@ -155,11 +155,13 @@ class GarbageHelper:
                         values[var.name] = string
                 else:
                     try:
+                        print(var.name, reg)
                         offset = hex(int(reg[1:]))
                         reg = f"[rsp+{offset}]" if idaapi.get_inf_structure(
                         ).is_64bit() else f"[esp+{offset}]"
                         string = f'{var.name}: {reg}'
-                        values[var.name] = string
+                        #TODO: fix this
+                        #values[var.name] = string
                     except ValueError:
                         continue
         return values
@@ -555,6 +557,8 @@ class TraceCollection:
                                 var.name, var.defea,
                                 ida_hexrays.print_vdloc(
                                     var.location, int(var.width)))
+                            print(var.name, var.defea,ida_hexrays.print_vdloc(
+                                    var.location, int(var.width)))
 
                 TraceCollection.Variables.Instanciate(ea, variables)
 
@@ -693,11 +697,11 @@ class UI(PluginForm):
                                                     self.widget)
         self.traceBtnGlobal.setGeometry(*btnpostions[0])
         self.traceBtnGlobal.clicked.connect(self.valuetracer.ActionGlobalTrace)
-        self.traceBtnChirugical = QtWidgets.QPushButton(
-            'Chirugical Tracing', self.widget)
-        self.traceBtnChirugical.setGeometry(*btnpostions[5])
-        self.traceBtnChirugical.clicked.connect(
-            self.valuetracer.ActionChirugicalTrace)
+        self.traceBtnSurgical = QtWidgets.QPushButton(
+            'Surgical Tracing', self.widget)
+        self.traceBtnSurgical.setGeometry(*btnpostions[5])
+        self.traceBtnSurgical.clicked.connect(
+            self.valuetracer.ActionSurgicalTrace)
         self.loadBtn = QtWidgets.QPushButton('Load', self.widget)
         self.loadBtn.setGeometry(*btnpostions[7])
         self.loadBtn.clicked.connect(self.valuetracer.Load)
@@ -790,9 +794,13 @@ class UI(PluginForm):
                 for ea, entry in trace.entries.items():
                     code.extend([ea, idc.GetDisasm(ea)] for _ in entry)
         else:
-            funcName = self.callsW.currentItem().text()
-            ea = idc.get_name_ea_simple(funcName)
-            code = IdaHelper.GrabFunctionCode(ea)
+            try:
+                funcName = self.callsW.currentItem().text()
+                ea = idc.get_name_ea_simple(funcName)
+                code = IdaHelper.GrabFunctionCode(ea)
+            except AttributeError:
+                pass
+                
         self._ShowCode(code)
 
     def _ShowCode(self, code):
@@ -892,10 +900,10 @@ class UI(PluginForm):
 class EasyRe(idaapi.plugin_t):
 
     flags = idaapi.PLUGIN_UNL
-    comment = "Plugin for improve the reverse engineering speed of IDA when you want tog focus on a Chirugical part of the code"
+    comment = "Plugin for improve the reverse engineering speed of IDA when you want tog focus on a Surgical part of the code"
     help = "See https://github.com/"
     wanted_name = "EasyRe"
-    wanted_hotkey = "Ctrl+Shift+S"
+    wanted_hotkey = "Ctrl+Shift+U"
 
     def __init__(self):
         super(EasyRe, self).__init__()
@@ -924,13 +932,7 @@ class EasyRe(idaapi.plugin_t):
         """
         self.UI = UI()
         self.UI.AttachTracer(self)
-        # # try instantiate the UI
-        # for i in range(10):
-        #     try:
-        #         self.UI.Show(f"EasyRe - {hex(i)}")
-        #         break
-        #     except Exception as e:
-        #         logging.error(e)
+
                 
     def run(self, arg):
         """_summary_
@@ -989,16 +991,16 @@ class EasyRe(idaapi.plugin_t):
         self.GlobalTrace()
         self.CleanBreakpoints()
 
-    def ActionChirugicalTrace(self):
+    def ActionSurgicalTrace(self):
         """_summary_
-        Trrigger the Chirugical trace action
+        Trrigger the Surgical trace action
         """
         self.Reset()
         IdaHelper.Resume()
         self.CleanBreakpoints()
         self.last_invoke = Invoke.CHIRUGICAL_TRACER
         self.timestotrace = idaapi.ask_long(10, "Number of times to trace:")
-        self.ChirugicalTrace()
+        self.SurgicalTrace()
 
     @PrepareTrace
     def ActionStepOver(self):
@@ -1204,9 +1206,9 @@ class EasyRe(idaapi.plugin_t):
             self.UI.AddCall(functionname)
         ida_dbg.request_enable_insn_trace(False)
 
-    def ChirugicalTrace(self):
+    def SurgicalTrace(self):
         """_summary_
-        This function is responsible for the Chirugical trace action.
+        This function is responsible for the Surgical trace action.
         """
         try:
             self.watchDog.Start()
@@ -1232,8 +1234,7 @@ class Invoke(IntEnum):
 
 
 
+
 def PLUGIN_ENTRY():
-
     return EasyRe()
-
 
