@@ -12,6 +12,10 @@ You tube video link (old version) :
 
 ------
 
+## Changes :
+- Removed Max parents and Discovery Tries
+- Remove parent trace
+
 ## Shortcut :
 
 `crtl+alt+S`
