@@ -155,7 +155,6 @@ class GarbageHelper:
                         values[var.name] = string
                 else:
                     try:
-                        print(var.name, reg)
                         offset = hex(int(reg[1:]))
                         reg = f"[rsp+{offset}]" if idaapi.get_inf_structure(
                         ).is_64bit() else f"[esp+{offset}]"
@@ -331,13 +330,7 @@ class IdaHelper:
 
     @staticmethod
     def AskConfigurationValues():
-        c = idaapi.ask_long(GarbageValues.maxparents,
-                            "Number of parents to trace:")
-        GarbageValues.maxparents if c is not None else GarbageValues.maxparents
-
-        c = idaapi.ask_long(GarbageValues.discoverytries,
-                            "Number of discovery tries:")
-        GarbageValues.discoverytries = c if c is not None else GarbageValues.discoverytries
+        pass
 
     @staticmethod
     def GetNames(base, size, desirednames):
@@ -556,8 +549,6 @@ class TraceCollection:
                             variables.AppendVariable(
                                 var.name, var.defea,
                                 ida_hexrays.print_vdloc(
-                                    var.location, int(var.width)))
-                            print(var.name, var.defea,ida_hexrays.print_vdloc(
                                     var.location, int(var.width)))
 
                 TraceCollection.Variables.Instanciate(ea, variables)
@@ -1131,8 +1122,7 @@ class EasyRe(idaapi.plugin_t):
         print(f"Main function: {functionname}")
         if functionname not in self.discoveredfuncs:
             self.discoveredfuncs.append(functionname)
-        IdaHelper.AskConfigurationValues()
-        self.DiscoverParents()
+        #self.DiscoverParents()
         self.DiscoverChildren()
         self.discoveredfuncs = list(set(self.discoveredfuncs))
         self.SetBreakpointsIntoDiscoveredFunctions()
@@ -1185,25 +1175,21 @@ class EasyRe(idaapi.plugin_t):
         """
 
         self.watchDog.Start()
-        # trace parents and main function ->  get down
         while True:
-            self.Trace()
-            if IdaHelper.GetEA()[1] != self.main_function:
-                break
-        #  -> get up
-        for _ in range(len(self.traceevents)):
-            ea, functionname = IdaHelper.GetEA()
-            self.SetBreakpointsOnReturns(ea)
-            while True:
+            try:
+                ea, functionname = IdaHelper.GetEA()
                 QtWidgets.QApplication.processEvents()
                 self.watchDog.CheckExpired()
                 if idc.print_insn_mnem(ea) in GarbageValues.ret:
-                    ida_dbg.step_over()
-                    event = ida_dbg.wait_for_next_event(ida_dbg.WFNE_SUSP, -1)
-                    break
-                ea, functionname = IdaHelper.GetEA()
+                    if functionname == self.main_function:
+                        ida_dbg.step_over()
+                        event = ida_dbg.wait_for_next_event(ida_dbg.WFNE_SUSP, -1)
+                        ea, functionname = IdaHelper.GetEA()
+                        self.UI.AddCall(functionname)
+                        break
                 self.Trace()
-            self.UI.AddCall(functionname)
+            except Exception:
+                return
         ida_dbg.request_enable_insn_trace(False)
 
     def SurgicalTrace(self):
