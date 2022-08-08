@@ -18,7 +18,7 @@ You tube video link (old version) :
 
 ## Shortcut :
 
-`crtl+alt+S`
+`Open the plugin : crtl+shift+u`
 
 ## Functionality :
 
