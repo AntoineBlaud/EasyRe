@@ -4,7 +4,7 @@
 
 IDA Python 3 plug-in to make your RE life easier. Trace execution and save code/memory for detailed exploration. It allow in a easy way to compare data given to specific part of the code between different calls. 
 
-## How to used
+## Usage
 
 You tube video link (old version) : 
 
@@ -20,13 +20,13 @@ You tube video link (old version) :
 
 `Open the plugin : crtl+shift+u`
 
-## Functionality :
+## Usage :
 
 ### Function Tracing
 
-  Function Tracing functionality aims to but breakpoints on the whole code of a function and his direct childrens in order to register each steps. Te goal is to save all the trace in order to understand what's going on thanks to the trace explorer integrated in this plug-in.
+  Function tracing puts breakpoints on the whole code of a function and  its direct children in order to register each step. The goal is to  capture the whole trace in order to understand what's going on thanks to the trace explorer integrated in this plug-in.
 
- **Important:** In order to use it you must place **a single breakpoints** at the start of the function that's you want to analyses and hit that breakpoint with IDA, then launch the tracing.
+ **Important:** In order to use it you must place a single breakpoint at the  start of the function you want to analyze and hit that breakpoint with  IDA, then launch the tracing.
 
 
 ### Surgical Tracing
@@ -42,7 +42,7 @@ You tube video link (old version) :
 
 ### Windows  API hook
 
-If you are tired of placing breakpoints on windows functions that are entry points for the kernel and are often used by malware, here is a feature that should be of interest to you. It will automatically place breakpoints on a number of system functions, even if they are not in the imports, in order to make the reverse easier
+  If you are tired of placing breakpoints on windows functions that are entry points for the kernel and are often used by malware, here is a feature that should be of interest to you. It will automatically place breakpoints on a number of system functions, even if they are not in the imports, in order to make reversing easier.
 
 ## Extra Note:
 
