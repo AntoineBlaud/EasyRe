@@ -46,7 +46,7 @@ If you are tired of placing breakpoints on windows functions that are entry poin
 
 ## Extra Note:
 
-Some improvements will come in the next months, like a accurate parent tracing.
+Some improvements will come in the next months, like an accurate parent tracing.
 
 
 
