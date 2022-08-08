@@ -24,7 +24,7 @@ You tube video link (old version) :
 
 ### Function Tracing
 
-  Function Tracing functionality aims to but breakpoints one the whole code of a function and his direct childrens in order to register each steps. Te goal is to save all in order to understand what's going on thanks to the trace explorer integrated in this plug-in.
+  Function Tracing functionality aims to but breakpoints on the whole code of a function and his direct childrens in order to register each steps. Te goal is to save all the trace in order to understand what's going on thanks to the trace explorer integrated in this plug-in.
 
  **Important:** In order to use it you must place **a single breakpoints** at the start of the function that's you want to analyses and hit that breakpoint with IDA, then launch the tracing.
 
