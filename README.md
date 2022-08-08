@@ -1,6 +1,6 @@
-# EasyRe x86-x64 plugin
+# EasyRe plugin
 
-![tags](https://img.shields.io/badge/tags-%20ida%20ida--pro%2C%20ida--plugin%2C%20idapython-blue) ![version](https://img.shields.io/badge/version-0.2-yellowgreen)
+![tags](https://img.shields.io/badge/tags-%20ida%20ida--pro%2C%20ida--plugin%2C%20idapython-blue) ![arch](https://img.shields.io/badge/arch-x86/x64-lightgrey) ![version](https://img.shields.io/badge/version-0.2-yellowgreen)
 
 IDA Python 3 plug-in to make your RE life easier. Trace execution and save code/memory for detailed exploration. It allow in a easy way to compare data given to specific part of the code between different calls. 
 
