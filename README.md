@@ -44,5 +44,9 @@ You tube video link (old version) :
 
 If you are tired of placing breakpoints on windows functions that are entry points for the kernel and are often used by malware, here is a feature that should be of interest to you. It will automatically place breakpoints on a number of system functions, even if they are not in the imports, in order to make the reverse easier
 
+## Extra Note:
+
+Some improvements will come in the next months, like a accurate parent tracing.
+
 
 
