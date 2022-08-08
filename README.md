@@ -12,7 +12,7 @@ You tube video link (old version) :
 
 ------
 
-## Changes :
+## Recent changes :
 - Removed Max parents and Discovery Tries
 - Remove parent trace
 
