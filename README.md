@@ -12,9 +12,8 @@ You tube video link (old version) :
 
 ------
 
-## Recent changes :
-- Removed Max parents and Discovery Tries
-- Remove parent trace
+## Installation :
+```pip3 install idna easygui```
 
 ## Shortcut :
 
