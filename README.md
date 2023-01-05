@@ -5,7 +5,7 @@
 IDA Python 3 plug-in to make your RE life easier. Trace execution and save code/memory for detailed exploration. It allow in a easy way to compare data given to specific part of the code between different calls. 
 
 ## NEW 
-Go checkout [frida-utltimap](https://github.com/AntoineBlaud/frida-ultimap).
+Go checkout [frida-ultimap](https://github.com/AntoineBlaud/frida-ultimap).
 
 ## Usage
 
