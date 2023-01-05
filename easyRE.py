@@ -25,7 +25,6 @@ import idautils
 import idc
 import ida_xref
 import PyQt5
-from cv2 import add, trace
 from idaapi import PluginForm
 from idna import valid_label_length
 from PyQt5 import QtCore, QtGui, QtWidgets
